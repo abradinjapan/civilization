@@ -1,4 +1,4 @@
-#include <stdio.h>
+#include "basic.h"
 
 // entry point
 int main() {
