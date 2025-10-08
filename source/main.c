@@ -1,4 +1,4 @@
-#include "basic.h"
+#include "./civilization/civilization.h"
 
 // entry point
 int main() {
