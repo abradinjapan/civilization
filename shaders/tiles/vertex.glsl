@@ -1,7 +1,7 @@
 #version 330 core
 
 // inputs
-layout (location = 0) in uint GLOBAL_compact_coords;
+layout (location = 0) in vec3 GLOBAL_compact_coords;
 layout (location = 1) in uint GLOBAL_compact_styling;
 
 // texture uniforms
@@ -11,9 +11,7 @@ uniform sampler2DArray GLOBAL_current_texture_unit;
 uniform mat4 GLOBAL_transform;
 
 // outputs
-out float GLOBAL_texture_x;
-out float GLOBAL_texture_y;
-out float GLOBAL_texture_z;
+out vec3 GLOBAL_texture_coords;
 
 // take compact coords uint and extract x, y, z, texture_x, texture_y
 void VERTEX_decompress_coords(in uint compact_coords, out float x, out float y, out float z, out float texture_x, out float texture_y) {
