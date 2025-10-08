@@ -22,13 +22,8 @@ typedef RENDER__axis RENDER__x;
 typedef RENDER__axis RENDER__y;
 typedef RENDER__axis RENDER__z;
 
-// chunk vbo data
-typedef u8 RENDER__compact_axis;
-typedef RENDER__compact_axis RENDER__compact_x; // chunk relative vertex offset
-typedef RENDER__compact_axis RENDER__compact_y; // chunk relative vertex offset
-typedef RENDER__compact_axis RENDER__compact_z; // chunk relative vertex offset
-typedef u8 RENDER__compact_texture_xy; // texture sub indices
-typedef TEX__face_count RENDER__compact_texture_z; // texture number / 2d texture array texture selector
+// tile outline vbo data
+typedef TEX__face_count RENDER__texture_z; // texture number / 2d texture array texture selector
 
 // chunk vbo organizers
 typedef u32 RENDER__compact_vertex_half;

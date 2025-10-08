@@ -35,6 +35,7 @@ typedef BASIC__u64 BASIC__length;
 typedef BASIC__u64 BASIC__bit_count;
 typedef BASIC__u64 BASIC__byte_count;
 typedef BASIC__u64 BASIC__digit_count;
+typedef BASIC__u64 BASIC__index;
 #define BASIC__define__bits_per_byte 8
 #define BASIC__define__zero_length 0
 
@@ -441,23 +442,23 @@ void BASIC__print__buffer(BASIC__buffer buffer) {
 
 /* List */
 // list types
-typedef BASIC__u64 BASIC__list_filled_index;
+typedef BASIC__u64 BASIC__list_filled_length;
 typedef BASIC__u64 BASIC__list_increase;
 
 // list object
 typedef struct BASIC__list {
-    BASIC__buffer buffer;
-    BASIC__list_filled_index filled_index;
+    BASIC__buffer allocation;
+    BASIC__list_filled_length filled_length;
     BASIC__list_increase increase;
 } BASIC__list;
 
 // create a list
-BASIC__list BASIC__create__list(BASIC__buffer buffer, BASIC__list_filled_index filled_index, BASIC__list_increase increase) {
+BASIC__list BASIC__create__list(BASIC__buffer allocation, BASIC__list_filled_length filled_length, BASIC__list_increase increase) {
     BASIC__list output;
 
     // setup output
-    output.buffer = buffer;
-    output.filled_index = filled_index;
+    output.allocation = allocation;
+    output.filled_length = filled_length;
     output.increase = increase;
 
     return output;
@@ -491,8 +492,8 @@ BASIC__list BASIC__open__list(BASIC__list_increase increase, BASIC__bt* error_oc
     }
 
     // setup output
-    output.buffer = allocation;
-    output.filled_index = 0;
+    output.allocation = allocation;
+    output.filled_length = 0;
     output.increase = increase;
 
     return output;
@@ -501,18 +502,19 @@ BASIC__list BASIC__open__list(BASIC__list_increase increase, BASIC__bt* error_oc
 // destroy a list
 void BASIC__close__list(BASIC__list list) {
     // free buffer
-    BASIC__close__buffer(BASIC__create__buffer(list.buffer.start, list.buffer.end));
+    BASIC__close__buffer(list.allocation);
 
     return;
 }
 
 // expand a list
-void BASIC__list__expand(BASIC__list* list, BASIC__bt* error_occured) {
-    BASIC__list_filled_index new_size;
+void BASIC__list__request__space(BASIC__list* list, BASIC__length space_requested, BASIC__bt* error_occured) {
+    BASIC__length new_size;
     BASIC__buffer new_allocation;
 
     // calculate new buffer size
-    new_size = ((BASIC__u64)(*list).buffer.end - (BASIC__u64)(*list).buffer.start + 1) + (*list).increase;
+    // calulate minimum space required
+    new_size = BASIC__calculate__buffer_length((*list).allocation) + (((space_requested / (*list).increase) + 1) * (*list).increase);
 
     // request new memory
     new_allocation = BASIC__open__buffer(new_size);
@@ -527,50 +529,33 @@ void BASIC__list__expand(BASIC__list* list, BASIC__bt* error_occured) {
     }
 
     // copy old data to new list
-    for (BASIC__list_filled_index i = 0; i < (*list).filled_index; i++) {
+    for (BASIC__list_filled_length i = 0; i < (*list).filled_length; i++) {
         // copy one byte
-        ((BASIC__u8*)new_allocation.start)[i] = ((BASIC__u8*)(*list).buffer.start)[i];
+        ((BASIC__u8*)new_allocation.start)[i] = ((BASIC__u8*)(*list).allocation.start)[i];
     }
 
     // free old buffer
-    BASIC__close__buffer((*list).buffer);
+    BASIC__close__buffer((*list).allocation);
 
     // setup new list allocation
-    (*list).buffer = new_allocation;
-
-    return;
-}
-
-// request space for the list
-void BASIC__list__request__space(BASIC__list* list, BASIC__byte_count byte_count, BASIC__bt* error_occured) {
-    // expand the list until there is enough space
-    while (((BASIC__u64)(*list).buffer.end - (BASIC__u64)(*list).buffer.start + 1) < ((*list).filled_index + byte_count)) {
-        // expand the list
-        BASIC__list__expand(list, error_occured);
-
-        // check for error
-        if (*error_occured == BASIC__bt__true) {
-            // return last modified list
-            return;
-        }
-    }
+    (*list).allocation = new_allocation;
 
     return;
 }
 
 // add index to address
-BASIC__address BASIC__calculate__address_from_buffer_index(BASIC__address start, BASIC__list_filled_index index) {
+BASIC__address BASIC__calculate__address_from_buffer_index(BASIC__address start, BASIC__index index) {
     return start + index;
 }
 
 // calculate the tip of the list
 BASIC__address BASIC__calculate__list_current_address(BASIC__list* list) {
-    return BASIC__calculate__address_from_buffer_index((*list).buffer.start, (*list).filled_index);
+    return BASIC__calculate__address_from_buffer_index((*list).allocation.start, (*list).filled_length);
 }
 
 // calculate the current buffer
 BASIC__buffer BASIC__calculate__list_current_buffer(BASIC__list* list) {
-    return BASIC__create__buffer(((*list).buffer.start), BASIC__calculate__list_current_address(list) - 1);
+    return BASIC__create__buffer(((*list).allocation.start), BASIC__calculate__list_current_address(list));
 }
 
 // add a buffer to a list
@@ -582,7 +567,7 @@ void BASIC__list__append__buffer(BASIC__list* list, BASIC__buffer buffer, BASIC_
     (*(BASIC__buffer*)BASIC__calculate__list_current_address(list)) = buffer;
 
     // increase fill
-    (*list).filled_index += sizeof(BASIC__buffer);
+    (*list).filled_length += sizeof(BASIC__buffer);
 
     return;
 }
@@ -599,13 +584,13 @@ void BASIC__list__append__buffer_data(BASIC__list* list, BASIC__buffer buffer, B
     BASIC__list__request__space(list, buffer_length, memory_error_occured);
 
     // calculate old buffer end
-    buffer_old_end = (*list).buffer.start + (*list).filled_index - 1;
+    buffer_old_end = BASIC__calculate__list_current_buffer(list).end;
 
     // append data
     BASIC__copy__buffer(buffer, BASIC__create__buffer(buffer_old_end + 1, buffer_old_end + 1 + buffer_length - 1), memory_error_occured);
 
     // increase fill
-    (*list).filled_index += buffer_length;
+    (*list).filled_length += buffer_length;
 
     return;
 }
@@ -619,19 +604,19 @@ void BASIC__list__append__list(BASIC__list* list, BASIC__list data, BASIC__bt* m
     (*(BASIC__list*)BASIC__calculate__list_current_address(list)) = data;
 
     // increase fill
-    (*list).filled_index += sizeof(BASIC__list);
+    (*list).filled_length += sizeof(BASIC__list);
 
     return;
 }
 
 // remove a slice of data from a list
-void BASIC__list__erase__space(BASIC__list* list, BASIC__list_filled_index range_start_index, BASIC__list_filled_index range_end_index) {
+void BASIC__list__erase__space(BASIC__list* list, BASIC__index range_start_index, BASIC__index range_end_index) {
     BASIC__buffer old_right;
     BASIC__buffer new_right;
     BASIC__bt error;
 
     // get new right buffer
-    old_right = BASIC__create__buffer(BASIC__calculate__address_from_buffer_index((*list).buffer.start, range_end_index), BASIC__calculate__list_current_address(list));
+    old_right = BASIC__create__buffer(BASIC__calculate__address_from_buffer_index((*list).allocation.start, range_end_index), BASIC__calculate__list_current_address(list));
     new_right = BASIC__create__buffer(old_right.start - (range_end_index - range_start_index + 1), old_right.end - (range_end_index - range_start_index + 1));
 
     // move data from left to right filling in the gap
@@ -644,7 +629,7 @@ void BASIC__list__erase__space(BASIC__list* list, BASIC__list_filled_index range
     // buffer was clipped, change filled index
     } else {
         // change filled index
-        (*list).filled_index -= range_end_index - range_start_index + 1;
+        (*list).filled_length -= range_end_index - range_start_index + 1;
     }
 
     return;
@@ -652,7 +637,7 @@ void BASIC__list__erase__space(BASIC__list* list, BASIC__list_filled_index range
 
 // check if two lists are filled up to the same amount
 BASIC__bt BASIC__calculate__lists_have_same_fill_size(BASIC__list* a, BASIC__list* b) {
-    return (BASIC__bt)((*a).filled_index == (*b).filled_index);
+    return (BASIC__bt)((*a).filled_length == (*b).filled_length);
 }
 
 // take a list and make a standalone buffer
@@ -660,7 +645,7 @@ BASIC__buffer BASIC__list__open_buffer_from_list(BASIC__list* list, BASIC__bt* m
     BASIC__buffer output;
 
     // allocate output
-    output = BASIC__open__buffer((*list).filled_index);
+    output = BASIC__open__buffer((*list).filled_length);
 
     // if buffer did not open
     if (BASIC__check__empty_buffer(output) == BASIC__bt__true) {
@@ -677,7 +662,7 @@ BASIC__buffer BASIC__list__open_buffer_from_list(BASIC__list* list, BASIC__bt* m
 
 // check if a list is uninitialized
 BASIC__bt BASIC__check__empty_list(BASIC__list list) {
-    return BASIC__check__empty_buffer(list.buffer);
+    return BASIC__check__empty_buffer(list.allocation);
 }
 
 /* Counted List */
@@ -719,26 +704,40 @@ BASIC__counted_list BASIC__open__counted_list(BASIC__list_increase increase, BAS
 
 /* Current */
 // define
-typedef BASIC__buffer BASIC__current;
+typedef struct BASIC__current {
+    BASIC__buffer range;
+    BASIC__address progress;
+} BASIC__current;
+
+// create current
+BASIC__current BASIC__create__current(BASIC__buffer range, BASIC__address progress) {
+    BASIC__current output;
+
+    // setup output
+    output.range = range;
+    output.progress= progress;
+
+    return output;
+}
 
 // check if a current buffer is still valid
 BASIC__bt BASIC__check__current_within_range(BASIC__current current) {
-    return (current.start <= current.end);
+    return (current.range.start <= current.progress) && (current.progress <= current.range.end);
 }
 
 // calculate a current buffer from a list // NOTE: buffer cannot be null or calculation fails!
 BASIC__current BASIC__calculate__current_from_list_filled_index(BASIC__list* list) {
-    return BASIC__create__buffer((*list).buffer.start, (*list).buffer.start + (*list).filled_index - 1);
+    return BASIC__create__current(BASIC__create__buffer((*list).allocation.start, (*list).allocation.start + (*list).filled_length - 1), (*list).allocation.start);
 }
 
 // check for a character at a current
 BASIC__bt BASIC__check__character_range_at_current(BASIC__current current, BASIC__character range_start, BASIC__character range_end) {
-    return ((*(BASIC__character*)current.start) >= range_start) && ((*(BASIC__character*)current.start) <= range_end);
+    return ((*(BASIC__character*)current.progress) >= range_start) && ((*(BASIC__character*)current.progress) <= range_end);
 }
 
-// calculate the amounnt of items in one list (assumes all items are same size!)
-BASIC__list_filled_index BASIC__calculate__list_content_count(BASIC__list list, size_t item_size) {
-    return list.filled_index / item_size;
+// calculate the amount of items in one list (assumes all items are same size!)
+BASIC__list_filled_length BASIC__calculate__list_content_count(BASIC__list list, size_t item_size) {
+    return list.filled_length / item_size;
 }
 
 /* Essentials */

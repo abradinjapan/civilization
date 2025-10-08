@@ -222,10 +222,6 @@ void CONF2__display__frame(GAME__information* game_information) {
     float rotation_speed = 0.5f;
     ESS__world_axis shift = 2;
 
-    // blocks
-    BLOCK__block place_block = BLOCK__create__block_only_solid(CONF2__bt__red_leaves);
-    BLOCK__block break_block = BLOCK__create__block_only_solid(CONF2__bt__air);
-
     // update mouse movement
     CONTROLS__update__mouse_position_change(&((*game_information).p_controls));
 
