@@ -9,10 +9,10 @@
 // tile options
 typedef enum TILE__to {
     // foundational types
-    TILE__to__invalid = 0x0,
-    TILE__to__impassable = 0x1,
-    TILE__to__ocean = 0x2,
-    TILE__to__land = 0x3,
+    TILE__to__foundational__invalid = 0x0,
+    TILE__to__foundational__impassable = 0x1,
+    TILE__to__foundational__ocean = 0x2,
+    TILE__to__foundational__land = 0x3,
 
     // land types
     TILE__to__land__arctic = 0x0 << 2,
@@ -28,8 +28,8 @@ typedef enum TILE__to {
 } TILE__to;
 
 // tile features
-typedef BASIC__u8 TILE__features;
-typedef BASIC__s8 TILE__height;
+typedef BASIC__u16 TILE__features;
+typedef BASIC__s16 TILE__height;
 typedef BASIC__u16 TILE__factory_count;
 typedef BASIC__u16 TILE__fort_level;
 typedef BASIC__u32 TILE__population;
@@ -73,7 +73,7 @@ TILE__tile TILE__create__tile(TILE__features basic_terrain, TILE__height height,
 
 // create null tile
 TILE__tile TILE__create_null__tile() {
-    return TILE__create__tile(TILE__to__invalid | TILE__to__land__arctic | TILE__to__land__features__open_sky, TILE__height__ocean_height, 0, TILE__culture__invalid, 0, 0);
+    return TILE__create__tile(TILE__to__foundational__invalid | TILE__to__land__arctic | TILE__to__land__features__open_sky, TILE__height__ocean_height, 0, TILE__culture__invalid, 0, 0);
 }
 
 #endif
