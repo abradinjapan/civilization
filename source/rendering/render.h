@@ -25,12 +25,8 @@ typedef RENDER__axis RENDER__z;
 // tile outline vbo data
 typedef TEX__face_count RENDER__texture_z; // texture number / 2d texture array texture selector
 
-// chunk vbo organizers
-typedef u32 RENDER__compact_vertex_half;
-typedef u64 RENDER__compact_vertex;
-
 // chunk vbo data indexing
-typedef u32 RENDER__vertex_index; // index into chunk's vertex array
+typedef BASIC__u32 RENDER__vertex_index; // index into chunk's vertex array
 typedef RENDER__vertex_index RENDER__vertex_count; // vertex count
 
 // chunk indexing

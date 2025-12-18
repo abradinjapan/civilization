@@ -1,8 +1,8 @@
 #version 330 core
 
 // inputs
-layout (location = 0) in vec3 GLOBAL_compact_coords;
-layout (location = 1) in uint GLOBAL_compact_styling;
+layout (location = 0) in vec3 GLOBAL_coords;
+layout (location = 1) in uint GLOBAL_styling;
 
 // texture uniforms
 uniform sampler2DArray GLOBAL_current_texture_unit;
@@ -37,17 +37,11 @@ void VERTEX_decompress_styling(in uint compact_styling, out float texture_z) {
 
 // shader entry point
 void main() {
-    // opengl vertex positions
-    float x;
-    float y;
-    float z;
-
-    // decompress the vbo input
-    VERTEX_decompress_coords(GLOBAL_compact_coords, x, y, z, GLOBAL_texture_x, GLOBAL_texture_y);
+    // decmopress styling
     VERTEX_decompress_styling(GLOBAL_compact_styling, GLOBAL_texture_z);
 
     // apply transformation
-    gl_Position = GLOBAL_transform * vec4(x, y, z, 1.0f);
+    gl_Position = GLOBAL_transform * vec4(GLOBAL_coords.xyz, 1.0f);
     
     return;
 }
