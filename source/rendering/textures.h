@@ -4,6 +4,7 @@
 /* Include */
 // base
 #include "../basic.h"
+#include "../random/random.h"
 
 // shaders
 #include "shaders.h"
@@ -18,10 +19,10 @@ typedef BASIC__u64 TEX__pixel_index;
 
 // values
 #define TEX__pixel_colors_count 4
-#define TEX__block_faces__texture_unit_ID 0
-#define TEX__block_faces__texture_ID (GL_TEXTURE0 + TEX__block_faces__texture_unit_ID)
-#define TEX__block_faces__texture_type GL_TEXTURE_2D_ARRAY
-#define TEX__block_faces__faces_per_block 6
+#define TEX__tile_faces__texture_unit_ID 0
+#define TEX__tile_faces__texture_ID (GL_TEXTURE0 + TEX__tile_faces__texture_unit_ID)
+#define TEX__tile_faces__texture_type GL_TEXTURE_2D_ARRAY
+#define TEX__tile_faces__faces_per_tile 6
 
 /* Pixel */
 // one pixel
@@ -72,7 +73,7 @@ TEX__faces TEX__create__faces(BASIC__buffer faces, TEX__dimension_length width, 
     return output;
 }
 
-// create null block faces
+// create null faces
 TEX__faces TEX__create_null__faces() {
     // return null
     return TEX__create__faces(BASIC__create_null__buffer(), 0, 0, 0);
@@ -103,7 +104,7 @@ TEX__faces TEX__open__faces(TEX__dimension_length width, TEX__dimension_length h
 // game texture type
 typedef enum TEX__gtt {
     // game texture types
-    TEX__gtt__block_faces,
+    TEX__gtt__tile_faces,
     TEX__gtt__LIMIT,
 
     // count
@@ -112,17 +113,17 @@ typedef enum TEX__gtt {
 
 // game textures
 typedef struct TEX__game_textures {
-    TEX__faces block_faces;
-    GLuint block_faces_handle;
+    TEX__faces tile_faces;
+    GLuint tile_faces_handle;
 } TEX__game_textures;
 
 // create game textures
-TEX__game_textures TEX__create__game_textures(TEX__faces block_faces, GLuint block_faces_handle) {
+TEX__game_textures TEX__create__game_textures(TEX__faces tile_faces, GLuint tile_faces_handle) {
     TEX__game_textures output;
 
     // setup output
-    output.block_faces = block_faces;
-    output.block_faces_handle = block_faces_handle;
+    output.tile_faces = tile_faces;
+    output.tile_faces_handle = tile_faces_handle;
 
     return output;
 }
@@ -137,15 +138,15 @@ TEX__game_textures TEX__create_null__game_textures() {
 void TEX__bind__game_textures__specific(TEX__game_textures game_textures, TEX__gtt game_texture_type, SHADER__program shader_program) {
     // bind according to type
     switch (game_texture_type) {
-        case TEX__gtt__block_faces:
+        case TEX__gtt__tile_faces:
             // set active texture (one per game texture type)
-            glActiveTexture(TEX__block_faces__texture_ID);
+            glActiveTexture(TEX__tile_faces__texture_ID);
 
             // bind texture buffer
-            glBindTexture(TEX__block_faces__texture_type, game_textures.block_faces_handle);
+            glBindTexture(TEX__tile_faces__texture_type, game_textures.tile_faces_handle);
 
             // set active texture unit in opengl shader uniform
-            glUniform1i(glGetUniformLocation(shader_program.program_ID, "GLOBAL_current_texture_unit"), TEX__block_faces__texture_unit_ID);
+            glUniform1i(glGetUniformLocation(shader_program.program_ID, "GLOBAL_current_texture_unit"), TEX__tile_faces__texture_unit_ID);
 
             break;
         default:
@@ -162,9 +163,9 @@ void TEX__unbind__game_textures__specific(TEX__game_textures game_textures, TEX_
 
     // unbind according to type
     switch (game_texture_type) {
-        case TEX__gtt__block_faces:
+        case TEX__gtt__tile_faces:
             // unbind texture buffer
-            glBindTexture(TEX__block_faces__texture_type, 0);
+            glBindTexture(TEX__tile_faces__texture_type, 0);
             
             break;
         default:
@@ -175,21 +176,21 @@ void TEX__unbind__game_textures__specific(TEX__game_textures game_textures, TEX_
 }
 
 // setup game textures on the cpu and gpu
-TEX__game_textures TEX__open__game_textures(TEX__faces block_faces, SHADER__program shader_program) {
+TEX__game_textures TEX__open__game_textures(TEX__faces tile_faces, SHADER__program shader_program) {
     TEX__game_textures output;
 
-    // setup cpu side data for block faces
-    output.block_faces = block_faces;
-    glCreateTextures(TEX__block_faces__texture_type, 1, &(output.block_faces_handle));
+    // setup cpu side data for tile faces
+    output.tile_faces = tile_faces;
+    glCreateTextures(TEX__tile_faces__texture_type, 1, &(output.tile_faces_handle));
 
-    // setup opengl side for block faces
-    TEX__bind__game_textures__specific(output, TEX__gtt__block_faces, shader_program);
-    glTexParameteri(TEX__block_faces__texture_type, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(TEX__block_faces__texture_type, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(TEX__block_faces__texture_type, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(TEX__block_faces__texture_type, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexImage3D(TEX__block_faces__texture_type, 0, GL_RGBA8, block_faces.width, block_faces.height, block_faces.count, 0, GL_RGBA /* Do not change to GL_RGBA8, crashes */, GL_UNSIGNED_BYTE, block_faces.faces.start);
-    TEX__unbind__game_textures__specific(output, TEX__gtt__block_faces);
+    // setup opengl side for tile faces
+    TEX__bind__game_textures__specific(output, TEX__gtt__tile_faces, shader_program);
+    glTexParameteri(TEX__tile_faces__texture_type, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(TEX__tile_faces__texture_type, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(TEX__tile_faces__texture_type, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(TEX__tile_faces__texture_type, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexImage3D(TEX__tile_faces__texture_type, 0, GL_RGBA8, tile_faces.width, tile_faces.height, tile_faces.count, 0, GL_RGBA /* Do not change to GL_RGBA8, crashes */, GL_UNSIGNED_BYTE, tile_faces.faces.start);
+    TEX__unbind__game_textures__specific(output, TEX__gtt__tile_faces);
 
     return output;
 }
@@ -197,10 +198,10 @@ TEX__game_textures TEX__open__game_textures(TEX__faces block_faces, SHADER__prog
 // close the game textures on the cpu and gpu
 void TEX__close__game_textures(TEX__game_textures game_textures) {
     // close opengl handles
-    glDeleteTextures(1, &(game_textures.block_faces_handle));
+    glDeleteTextures(1, &(game_textures.tile_faces_handle));
 
     // destroy cpu data
-    TEX__destroy__faces(game_textures.block_faces);
+    TEX__destroy__faces(game_textures.tile_faces);
 
     return;
 }
@@ -353,9 +354,9 @@ void TEX__generate_face__vertical_stripes(TEX__faces faces, TEX__face_index face
     write_to = TEX__calculate__faces_pointer(faces, face_index);
 
     // draw each row
-    for (TEX__pixel_index row = 0; row < faces.p_height; row++) {
+    for (TEX__pixel_index row = 0; row < faces.height; row++) {
         // write each pixel in alternating order
-        for (TEX__pixel_index pixel = 0; pixel < faces.p_height; pixel += 2) {
+        for (TEX__pixel_index pixel = 0; pixel < faces.height; pixel += 2) {
             // write first pixel
             write_to = TEX__write__pixel(write_to, line_color_a);
 
